@@ -262,7 +262,7 @@ refresh_antigravity() {
     echo -e "\n${CYAN}━━━ Antigravity (Google AI Pro, Gemini) ━━━${NC}"
     if command -v agy &>/dev/null; then
         run_with_retry "Antigravity" "$AGY_TIMEOUT" \
-            agy -p "$PROMPT" --effort low
+            agy -p "$PROMPT" --model gemini-3.8-flash-low
     else
         echo -e "${YELLOW}[$(ts)] Antigravity CLI (agy) not found (install: brew install --cask antigravity-cli)${NC}"
         return 1
