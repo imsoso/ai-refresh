@@ -192,12 +192,15 @@ zcode_available() {
 }
 
 refresh_zcode() {
-    echo -e "\n${CYAN}━━━ ZCode (GLM Coding Plan) ━━━${NC}"
+    echo -e "\n${CYAN}━━━ ZCode (GLM Coding Plan, GLM-5.3-Flash 低档) ━━━${NC}"
     if zcode_available; then
         run_with_retry "ZCode" "$ZCODE_TIMEOUT" \
-            node "$ZCODE_CJS" --no-browser-state -p "$PROMPT"
+            env \
+            ZCODE_CREDENTIAL_SECRET_FILE="${ZCODE_CREDENTIAL_SECRET_FILE:-$HOME/.zcode/cli/credential-secret}" \
+            ZCODE_CREDENTIALS_FILE="${ZCODE_CREDENTIALS_FILE:-$HOME/.zcode/cli/credentials.json}" \
+            node "$ZCODE_CJS" -p "$PROMPT"
     else
-        echo -e "${YELLOW}[$(ts)] ZCode CLI (app bundle) not found${NC}"
+        echo -e "${YELLOW}[$(ts)] ZCode CLI not found${NC}"
         return 1
     fi
 }

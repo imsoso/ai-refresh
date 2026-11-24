@@ -22,10 +22,39 @@
 
 当前内置（按优先级）：
 
-1. **zcode** — ZCode.app 自带的 CLI（`/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs`，走 GLM Coding Plan）
-2. **opencode** — `opencode run -m zhipuai-coding-plan/glm-4.5-air`（zcode 不在时的回落）
+1. **zcode** — `zcode -p`（GLM Coding Plan），默认模型 GLM-5.3-Flash 低推理档
+2. **opencode** — `opencode run -m zhipuai-coding-plan/glm-5.3-flash`（zcode 不在时的回落）
 
-添加其他 CLI（claude / codex 等）：在 `refresh-ai.sh` 里照抄一个 `refresh_xxx()` 函数并挂进 case 分支即可，函数只需一次 `--print` 式的最小调用。
+### zcode 无头模式的一次性配置
+
+zcode 的凭证默认放在 macOS 钥匙串，无头 cron 进程读不到，会报 "System credential storage is unavailable"。改用独立密钥文件 + 独立凭证存储（与桌面端互不影响）：
+
+```bash
+# 1. 生成 CLI 专用加密密钥（32–4096 字节，权限必须 600）
+dd if=/dev/urandom of=~/.zcode/cli/credential-secret bs=64 count=1
+chmod 600 ~/.zcode/cli/credential-secret
+
+# 2. 一次性登录（--no-browser 打印 URL，浏览器授权后自动写入）
+export ZCODE_CREDENTIAL_SECRET_FILE=~/.zcode/cli/credential-secret
+export ZCODE_CREDENTIALS_FILE=~/.zcode/cli/credentials.json
+zcode login bigmodel --no-browser
+```
+
+登录会把默认模型写进 `~/.zcode/v2/provider_config.json` 的 `config.defaultModelSelection`，之后 `zcode -p "..."` 无头可用。想用低档位省 token，把该字段改成：
+
+```json
+"defaultModelSelection": {
+  "providerId": "account:bigmodel-individual-coding-plan",
+  "modelId": "GLM-5.3-Flash",
+  "options": { "reasoningLevel": "low" }
+}
+```
+
+`refresh-ai.sh` 会自动带上这两个环境变量调用 zcode。
+
+### 添加其他 CLI
+
+在 `refresh-ai.sh` 里照抄一个 `refresh_xxx()` 函数并挂进 case 分支即可，函数只需一次最小调用（claude：`--print`；codex：`codex exec --skip-git-repo-check`）。
 
 ## 安装
 
