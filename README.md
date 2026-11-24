@@ -85,6 +85,8 @@ sudo bash -c 'echo "$USER ALL=(ALL) NOPASSWD: /usr/bin/pmset" > /etc/sudoers.d/p
 - macOS + 至少一个已登录的 AI CLI
 - Node（zcode 回路需要；opencode 不需要）
 - 无 GNU 依赖：超时控制用系统自带 perl 实现
+- `defaultModelSelection` 里的 `providerId` 取决于你的登录渠道：bigmodel 账号是 `account:bigmodel-individual-coding-plan`，Z.ai 账号是 `account:zai-individual-coding-plan`，以 `zcode login` 后自动写入的值为准
+- ZCode CLI 路径可用环境变量 `ZCODE_CJS` 覆盖（默认 `/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs`，官方 dmg 安装即此路径）
 
 ## License
 

@@ -5,7 +5,7 @@
 
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/opt/homebrew/opt/node@22/bin:/usr/local/bin:/usr/bin:$PATH"
 
-ZCODE_CJS="/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs"
+ZCODE_CJS="${ZCODE_CJS:-/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs}"
 
 REFRESH_DIR="$HOME/.ai-refresh-empty"
 LOCK_DIR="${TMPDIR:-/tmp}/ai-refresh.lock"
