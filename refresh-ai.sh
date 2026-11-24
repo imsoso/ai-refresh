@@ -259,14 +259,18 @@ refresh_codex() {
 }
 
 refresh_antigravity() {
-    echo -e "\n${CYAN}━━━ Antigravity (Google AI Pro, Gemini) ━━━${NC}"
-    if command -v agy &>/dev/null; then
-        run_with_retry "Antigravity" "$AGY_TIMEOUT" \
-            agy -p "$PROMPT" --model gemini-3.8-flash-low
-    else
+    echo -e "\n${CYAN}━━━ Antigravity (Google AI Pro) ━━━${NC}"
+    if ! command -v agy &>/dev/null; then
         echo -e "${YELLOW}[$(ts)] Antigravity CLI (agy) not found (install: brew install --cask antigravity-cli)${NC}"
         return 1
     fi
+    # Google meters Antigravity in two independent pools — Gemini models vs
+    # third-party models (Claude/GPT) — each with its own 5h/weekly window,
+    # so one trigger per pool is needed to open both.
+    run_with_retry "Antigravity/Gemini-pool" "$AGY_TIMEOUT" \
+        agy -p "$PROMPT" --model gemini-3.8-flash-low
+    run_with_retry "Antigravity/third-party-pool" "$AGY_TIMEOUT" \
+        agy -p "$PROMPT" --model gpt-oss-120b-medium
 }
 
 # "all": run only the AIs switched on (order: zcode → opencode → claude → codex → antigravity)
