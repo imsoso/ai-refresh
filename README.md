@@ -119,11 +119,12 @@ pmset -g sched | head -5       # 确认唤醒事件已预约
 | opencode | `opencode run -m zhipuai-coding-plan/glm-5.3-flash` | 关 |
 | claude | `claude --model haiku --print`（`npm i -g @anthropic-ai/claude-code`） | 关 |
 | codex | `codex exec -m gpt-5.4-mini`（`npm i -g @openai/codex`，配套 `codex-token-refresh.py` 自动续 OAuth token） | 关 |
-| antigravity | `agy -p --model gemini-3.8-flash-low`（Google AI Pro 会员的 Antigravity CLI，`brew install --cask antigravity-cli`） | 关 |
+| antigravity | `agy -p`（Google AI Pro 会员的 Antigravity CLI，`brew install --cask antigravity-cli`） | 关 |
 
 - 开关状态存于 `~/.config/ai-refresh/enabled`（每行一个名字）；文件不存在时默认只启用 zcode
 - 未安装对应 CLI 时，启用状态会以英文提示并附安装命令，不影响其他 AI
-- antigravity 与 Antigravity 桌面版共享 Google 登录态，桌面版登录过即可无头使用；codex 走 openai.com 需要能直连的网络
+- antigravity 与 Antigravity 桌面版共享 Google 登录态；**Google 对 Antigravity 分池限额**（Gemini 组 vs 第三方 Claude/GPT 组各自独立计算 5h/周限额），故每次触发跑两发——`gemini-3.8-flash-low` 开 Gemini 池、`gpt-oss-120b-medium` 开第三方池，均为该池最便宜的模型
+- codex 走 openai.com 需要能直连的网络
 - claude/codex 装好后 `ai-toggle enable` 即生效，无需改脚本
 
 ## 依赖
@@ -262,12 +263,12 @@ Seeing `ZCode ✓` / `OpenCode ✓` means the trigger succeeded — your plan's 
 | opencode | `opencode run -m zhipuai-coding-plan/glm-5.3-flash` | off |
 | claude | `claude --model haiku --print` (`npm i -g @anthropic-ai/claude-code`) | off |
 | codex | `codex exec -m gpt-5.4-mini` (`npm i -g @openai/codex`, with `codex-token-refresh.py` auto-refreshing the OAuth token) | off |
-| antigravity | `agy -p --model gemini-3.8-flash-low` (Google AI Pro's Antigravity CLI, `brew install --cask antigravity-cli`) | off |
+| antigravity | `agy -p` (Google AI Pro's Antigravity CLI, `brew install --cask antigravity-cli`) | off |
 
 - Switch state lives in `~/.config/ai-refresh/enabled` (one name per line); when the file is absent, only zcode is enabled
 - If a CLI isn't installed, an English message with the install command is printed — other AIs are unaffected
-- antigravity shares its Google login with the Antigravity desktop app; codex needs direct network access to openai.com
-- Once claude/codex are installed, `ai-toggle enable` is all it takes
+- antigravity shares its Google login with the Antigravity desktop app; **Google meters it in two independent pools** (Gemini models vs third-party Claude/GPT, each with its own 5h/weekly window), so each trigger fires twice — `gemini-3.8-flash-low` opens the Gemini pool, `gpt-oss-120b-medium` opens the third-party pool, both the cheapest in their pool
+- codex needs direct network access to openai.com
 
 ## Requirements
 
