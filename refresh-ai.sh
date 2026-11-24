@@ -20,6 +20,7 @@ ZCODE_TIMEOUT=180
 OPENCODE_TIMEOUT=120
 CLAUDE_TIMEOUT=120
 CODEX_TIMEOUT=240
+AGY_TIMEOUT=180
 
 # Per-AI switch file (one name per line); when absent, only zcode is enabled
 ENABLED_FILE="$HOME/.config/ai-refresh/enabled"
@@ -257,10 +258,21 @@ refresh_codex() {
     fi
 }
 
-# "all": run only the AIs switched on (order: zcode → opencode → claude → codex)
+refresh_antigravity() {
+    echo -e "\n${CYAN}━━━ Antigravity (Google AI Pro, Gemini) ━━━${NC}"
+    if command -v agy &>/dev/null; then
+        run_with_retry "Antigravity" "$AGY_TIMEOUT" \
+            agy -p "$PROMPT" --effort low
+    else
+        echo -e "${YELLOW}[$(ts)] Antigravity CLI (agy) not found (install: brew install --cask antigravity-cli)${NC}"
+        return 1
+    fi
+}
+
+# "all": run only the AIs switched on (order: zcode → opencode → claude → codex → antigravity)
 refresh_all_enabled() {
     local any=0
-    for ai in zcode opencode claude codex; do
+    for ai in zcode opencode claude codex antigravity; do
         ai_enabled "$ai" || continue
         any=1
         case "$ai" in
@@ -273,13 +285,14 @@ refresh_all_enabled() {
                 else
                     echo -e "${RED}[$(ts)] ZCode CLI missing and opencode switch is off — skipped${NC}"
                 fi ;;
-            opencode) refresh_opencode ;;
-            claude)   refresh_claude ;;
-            codex)    refresh_codex ;;
+            opencode)    refresh_opencode ;;
+            claude)      refresh_claude ;;
+            codex)       refresh_codex ;;
+            antigravity) refresh_antigravity ;;
         esac
     done
     [ "$any" -eq 1 ] || \
-        echo -e "${YELLOW}[$(ts)] No AI enabled — toggle with: ai-toggle enable <zcode|opencode|claude|codex>${NC}"
+        echo -e "${YELLOW}[$(ts)] No AI enabled — toggle with: ai-toggle enable <zcode|opencode|claude|codex|antigravity>${NC}"
 }
 
 schedule_next_day() {
@@ -295,13 +308,14 @@ schedule_next_day() {
 acquire_lock
 
 case "${1:-all}" in
-    zcode)    refresh_zcode ;;
-    opencode) refresh_opencode ;;
-    claude)   refresh_claude ;;
-    codex)    refresh_codex ;;
-    all)      refresh_all_enabled ;;
+    zcode)      refresh_zcode ;;
+    opencode)   refresh_opencode ;;
+    claude)     refresh_claude ;;
+    codex)      refresh_codex ;;
+    antigravity) refresh_antigravity ;;
+    all)        refresh_all_enabled ;;
     *)
-        echo "Usage: $0 [all|zcode|opencode|claude|codex]   # all = 只跑开关打开的 AI"
+        echo "Usage: $0 [all|zcode|opencode|claude|codex|antigravity]   # all = 只跑开关打开的 AI"
         exit 1
         ;;
 esac

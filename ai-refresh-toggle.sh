@@ -9,7 +9,7 @@ NC='\033[0m'
 
 STATE_FILE="$HOME/.ai-wake-state"
 ENABLED_FILE="$HOME/.config/ai-refresh/enabled"
-VALID_AIS="zcode opencode claude codex"
+VALID_AIS="zcode opencode claude codex antigravity"
 
 ensure_enabled_file() {
     mkdir -p "$(dirname "$ENABLED_FILE")"
@@ -30,6 +30,7 @@ cli_installed() {
         opencode) command -v opencode &>/dev/null ;;
         claude)   command -v claude &>/dev/null ;;
         codex)    command -v codex &>/dev/null ;;
+        antigravity) command -v agy &>/dev/null ;;
     esac
 }
 
@@ -57,7 +58,7 @@ ai_off() {
 }
 
 ai_list() {
-    echo -e "${BOLD}AI switches${NC} (order: zcode → opencode → claude → codex)"
+    echo -e "${BOLD}AI switches${NC} (order: zcode → opencode → claude → codex → antigravity)"
     for ai in $VALID_AIS; do
         if is_enabled "$ai"; then st="${GREEN}on${NC}"; else st="${RED}off${NC}"; fi
         if cli_installed "$ai"; then cli="${DIM}CLI ✓${NC}"; else cli="${YELLOW}CLI missing${NC}"; fi
@@ -120,7 +121,7 @@ case "${1:-status}" in
         echo "  off           Cancel all wakes only"
         echo "  status        Show current state"
         echo "  list          Show per-AI switches and CLI availability"
-        echo "  enable <ai>   Enable one AI: zcode|opencode|claude|codex"
+        echo "  enable <ai>   Enable one AI: zcode|opencode|claude|codex|antigravity"
         echo "  disable <ai>  Disable one AI"
         ;;
 esac
