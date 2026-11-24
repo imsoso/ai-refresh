@@ -102,16 +102,27 @@ pmset -g sched | head -5       # 确认唤醒事件已预约
 ~/bin/ai-toggle on              # 开：crontab + 30 天唤醒
 ~/bin/ai-toggle off             # 关：只取消唤醒（crontab 保留，Mac 醒着时照常刷新）
 ~/bin/ai-toggle status          # 状态：crontab / 唤醒队列 / 下次唤醒
-~/bin/refresh-ai.sh zcode       # 手动刷 zcode
-~/bin/refresh-ai.sh opencode    # 手动刷 opencode
+~/bin/ai-toggle list            # 各 AI 开关与 CLI 安装情况
+
+~/bin/ai-toggle enable claude   # 启用某个 AI（zcode|opencode|claude|codex）
+~/bin/ai-toggle disable codex   # 停用某个 AI
+
+~/bin/refresh-ai.sh             # 跑所有开关打开的 AI
+~/bin/refresh-ai.sh codex       # 手动刷单个（无论开关状态）
 ```
 
 ## 支持的 CLI
 
-1. **zcode** — `zcode -p`（GLM Coding Plan），默认模型 GLM-5.3-Flash 低推理档
-2. **opencode** — `opencode run -m zhipuai-coding-plan/glm-5.3-flash`（zcode 不在时的回落）
+| AI | 命令 | 默认 |
+|---|---|---|
+| zcode | `zcode -p`（GLM Coding Plan，GLM-5.3-Flash 低推理档） | **开** |
+| opencode | `opencode run -m zhipuai-coding-plan/glm-5.3-flash` | 关 |
+| claude | `claude --model haiku --print`（`npm i -g @anthropic-ai/claude-code`） | 关 |
+| codex | `codex exec -m gpt-5.4-mini`（`npm i -g @openai/codex`，配套 `codex-token-refresh.py` 自动续 OAuth token） | 关 |
 
-添加其他 CLI：在 `refresh-ai.sh` 里照抄一个 `refresh_xxx()` 函数并挂进 case 分支即可，函数只需一次最小调用（claude：`--print`；codex：`codex exec --skip-git-repo-check`）。
+- 开关状态存于 `~/.config/ai-refresh/enabled`（每行一个名字）；文件不存在时默认只启用 zcode
+- 未安装对应 CLI 时，启用状态会以英文提示并附安装命令，不影响其他 AI
+- codex 走 openai.com 需要能直连的网络；claude/codex 装好后 `ai-toggle enable` 即生效，无需改脚本
 
 ## 依赖
 
@@ -232,16 +243,27 @@ Seeing `ZCode ✓` / `OpenCode ✓` means the trigger succeeded — your plan's 
 ~/bin/ai-toggle on              # on: crontab + 30 days of wakes
 ~/bin/ai-toggle off             # off: cancels wakes only (crontab stays; refreshes still run while awake)
 ~/bin/ai-toggle status          # state: crontab / wake queue / next wake
-~/bin/refresh-ai.sh zcode       # manually refresh zcode
-~/bin/refresh-ai.sh opencode    # manually refresh opencode
+~/bin/ai-toggle list            # per-AI switches and CLI availability
+
+~/bin/ai-toggle enable claude   # enable one AI (zcode|opencode|claude|codex)
+~/bin/ai-toggle disable codex   # disable one AI
+
+~/bin/refresh-ai.sh             # run every switched-on AI
+~/bin/refresh-ai.sh codex       # manually refresh one (ignores the switch)
 ```
 
 ## Supported CLIs
 
-1. **zcode** — `zcode -p` (GLM Coding Plan), default model GLM-5.3-Flash on the low reasoning tier
-2. **opencode** — `opencode run -m zhipuai-coding-plan/glm-5.3-flash` (fallback when zcode is absent)
+| AI | Command | Default |
+|---|---|---|
+| zcode | `zcode -p` (GLM Coding Plan, GLM-5.3-Flash low reasoning tier) | **on** |
+| opencode | `opencode run -m zhipuai-coding-plan/glm-5.3-flash` | off |
+| claude | `claude --model haiku --print` (`npm i -g @anthropic-ai/claude-code`) | off |
+| codex | `codex exec -m gpt-5.4-mini` (`npm i -g @openai/codex`, with `codex-token-refresh.py` auto-refreshing the OAuth token) | off |
 
-Adding another CLI: copy a `refresh_xxx()` function in `refresh-ai.sh` and hook it into the case statement — one minimal call is all it takes (claude: `--print`; codex: `codex exec --skip-git-repo-check`).
+- Switch state lives in `~/.config/ai-refresh/enabled` (one name per line); when the file is absent, only zcode is enabled
+- If a CLI isn't installed, an English message with the install command is printed — other AIs are unaffected
+- codex needs direct network access to openai.com; once claude/codex are installed, `ai-toggle enable` is all it takes
 
 ## Requirements
 

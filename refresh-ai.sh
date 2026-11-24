@@ -1,7 +1,9 @@
 #!/bin/bash
-# refresh-ai.sh — 用一次最小请求"预热" GLM 系订阅的 5h 用量窗口
-# 由 crontab 每天 8/13/18 点触发；也可手动跑：refresh-ai.sh [all|zcode|opencode]
-# zcode 优先（随 ZCode.app 分发的 CLI），app 不在时回落 opencode。
+# refresh-ai.sh — pre-warm the 5h usage window of AI coding plans (GLM etc.)
+# with one minimal request. Fired by crontab at 8/13/18 daily, or run manually:
+#   refresh-ai.sh [all|zcode|opencode|claude|codex]
+# "all" only runs the AIs switched on via `ai-toggle enable|disable <name>`.
+# zcode first (CLI bundled with ZCode.app); opencode is used per its own switch.
 
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/opt/homebrew/opt/node@22/bin:/usr/local/bin:/usr/bin:$PATH"
 
@@ -16,6 +18,19 @@ MAX_RETRIES=3
 RETRY_DELAY=120
 ZCODE_TIMEOUT=180
 OPENCODE_TIMEOUT=120
+CLAUDE_TIMEOUT=120
+CODEX_TIMEOUT=240
+
+# Per-AI switch file (one name per line); when absent, only zcode is enabled
+ENABLED_FILE="$HOME/.config/ai-refresh/enabled"
+
+ai_enabled() {
+    if [ ! -f "$ENABLED_FILE" ]; then
+        [ "$1" = "zcode" ]
+    else
+        grep -qx "$1" "$ENABLED_FILE"
+    fi
+}
 
 PROMPT="Reply only with: ready
 
@@ -192,7 +207,7 @@ zcode_available() {
 }
 
 refresh_zcode() {
-    echo -e "\n${CYAN}━━━ ZCode (GLM Coding Plan, GLM-5.3-Flash 低档) ━━━${NC}"
+    echo -e "\n${CYAN}━━━ ZCode (GLM Coding Plan, GLM-5.3-Flash low reasoning) ━━━${NC}"
     if zcode_available; then
         run_with_retry "ZCode" "$ZCODE_TIMEOUT" \
             env \
@@ -216,13 +231,55 @@ refresh_opencode() {
     fi
 }
 
-# 主路径：zcode 可用则刷 zcode，否则回落 opencode
-refresh_fallback() {
-    if zcode_available; then
-        refresh_zcode
+refresh_claude() {
+    echo -e "\n${CYAN}━━━ Claude Code (haiku) ━━━${NC}"
+    if command -v claude &>/dev/null; then
+        run_with_retry "Claude Code" "$CLAUDE_TIMEOUT" \
+            claude --model haiku --print --system-prompt "Reply only: ready" "Reply only with the word ready"
     else
-        refresh_opencode
+        echo -e "${YELLOW}[$(ts)] Claude Code not found (install: npm i -g @anthropic-ai/claude-code)${NC}"
+        return 1
     fi
+}
+
+refresh_codex() {
+    echo -e "\n${CYAN}━━━ Codex (gpt-5.4-mini) ━━━${NC}"
+    if command -v codex &>/dev/null; then
+        echo -e "${DIM}[$(ts)] Refreshing Codex OAuth token...${NC}"
+        python3 "$HOME/bin/codex-token-refresh.py" 2>&1 \
+            || echo -e "${YELLOW}[$(ts)] Token refresh failed, continuing with existing token${NC}"
+        run_with_retry "Codex" "$CODEX_TIMEOUT" \
+            codex exec -m gpt-5.4-mini -c 'skills.include_instructions=false' \
+            --skip-git-repo-check --ignore-user-config --ignore-rules "Reply only with: ready"
+    else
+        echo -e "${YELLOW}[$(ts)] Codex not found (install: npm i -g @openai/codex)${NC}"
+        return 1
+    fi
+}
+
+# "all": run only the AIs switched on (order: zcode → opencode → claude → codex)
+refresh_all_enabled() {
+    local any=0
+    for ai in zcode opencode claude codex; do
+        ai_enabled "$ai" || continue
+        any=1
+        case "$ai" in
+            zcode)
+                if zcode_available; then
+                    refresh_zcode
+                elif ai_enabled opencode; then
+                    echo -e "${YELLOW}[$(ts)] ZCode CLI missing, falling back to opencode${NC}"
+                    refresh_opencode
+                else
+                    echo -e "${RED}[$(ts)] ZCode CLI missing and opencode switch is off — skipped${NC}"
+                fi ;;
+            opencode) refresh_opencode ;;
+            claude)   refresh_claude ;;
+            codex)    refresh_codex ;;
+        esac
+    done
+    [ "$any" -eq 1 ] || \
+        echo -e "${YELLOW}[$(ts)] No AI enabled — toggle with: ai-toggle enable <zcode|opencode|claude|codex>${NC}"
 }
 
 schedule_next_day() {
@@ -240,9 +297,11 @@ acquire_lock
 case "${1:-all}" in
     zcode)    refresh_zcode ;;
     opencode) refresh_opencode ;;
-    all)      refresh_fallback ;;
+    claude)   refresh_claude ;;
+    codex)    refresh_codex ;;
+    all)      refresh_all_enabled ;;
     *)
-        echo "Usage: $0 [all|zcode|opencode]"
+        echo "Usage: $0 [all|zcode|opencode|claude|codex]   # all = 只跑开关打开的 AI"
         exit 1
         ;;
 esac
