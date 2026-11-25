@@ -210,8 +210,12 @@ zcode_available() {
 refresh_zcode() {
     echo -e "\n${CYAN}━━━ ZCode (GLM Coding Plan, GLM-5.3-Flash low reasoning) ━━━${NC}"
     if zcode_available; then
+        # The desktop app injects the provider-config paths into its children;
+        # cron has none, so fall back to the stable bundle/v2 paths.
         run_with_retry "ZCode" "$ZCODE_TIMEOUT" \
             env \
+            ZCODE_BUILTIN_PROVIDER_CONFIG_FILE="${ZCODE_BUILTIN_PROVIDER_CONFIG_FILE:-/Applications/ZCode.app/Contents/Resources/config/provider/zcode-builtin.json}" \
+            ZCODE_PERSONAL_PROVIDER_CONFIG_FILE="${ZCODE_PERSONAL_PROVIDER_CONFIG_FILE:-$HOME/.zcode/v2/provider_config.json}" \
             ZCODE_CREDENTIAL_SECRET_FILE="${ZCODE_CREDENTIAL_SECRET_FILE:-$HOME/.zcode/cli/credential-secret}" \
             ZCODE_CREDENTIALS_FILE="${ZCODE_CREDENTIALS_FILE:-$HOME/.zcode/cli/credentials.json}" \
             node "$ZCODE_CJS" -p "$PROMPT"
