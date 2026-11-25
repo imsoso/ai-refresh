@@ -18,10 +18,10 @@
 | 脚本 | 作用 |
 |---|---|
 | `refresh-ai.sh` | 主脚本：向订阅 CLI 发送最小请求，带重试 / 代理降级 / 并发锁 |
-| `ai-refresh-toggle.sh` | `on` 写 crontab + 预约未来 30 天唤醒；`off` 只取消唤醒（crontab 保留）；`status` 查看状态 |
+| `ai-refresh-toggle.sh` | `on` 安装 LaunchAgent（每天 8/13/18，错过的任务在下次唤醒/开机时自动补跑）+ 预约未来 30 天唤醒；`off` 只取消唤醒；`status` 查看状态 |
 | `schedule-wakes.sh` | 批量预约未来 N 天每天 07:59 / 12:59 / 17:59 的 pmset 唤醒（幂等） |
 
-默认节奏：crontab 每天 **08:00 / 13:00 / 18:00** 触发，pmset 提前 1 分钟唤醒。日志在 `~/.ai-refresh.log`。
+默认节奏：launchd 每天 **08:00 / 13:00 / 18:00** 触发（错过的合并补跑），pmset 提前 1 分钟唤醒。日志在 `~/.ai-refresh.log`。
 
 ## 快速开始（怎么做）
 
@@ -82,7 +82,7 @@ sudo bash -c 'echo "$USER ALL=(ALL) NOPASSWD: /usr/bin/pmset" > /etc/sudoers.d/p
 ### 第 4 步：开启
 
 ```bash
-~/bin/ai-toggle on       # 写 crontab + 预约 30 天唤醒
+~/bin/ai-toggle on       # 安装 LaunchAgent + 预约 30 天唤醒
 ~/bin/ai-toggle status   # 查看状态
 ```
 
@@ -99,9 +99,9 @@ pmset -g sched | head -5       # 确认唤醒事件已预约
 ## 日常使用
 
 ```bash
-~/bin/ai-toggle on              # 开：crontab + 30 天唤醒
-~/bin/ai-toggle off             # 关：只取消唤醒（crontab 保留，Mac 醒着时照常刷新）
-~/bin/ai-toggle status          # 状态：crontab / 唤醒队列 / 下次唤醒
+~/bin/ai-toggle on              # 开：LaunchAgent + 30 天唤醒
+~/bin/ai-toggle off             # 关：只取消唤醒（LaunchAgent 保留，Mac 醒着时照常刷新）
+~/bin/ai-toggle status          # 状态：LaunchAgent / 唤醒队列 / 下次唤醒
 ~/bin/ai-toggle list            # 各 AI 开关与 CLI 安装情况
 
 ~/bin/ai-toggle enable claude   # 启用某个 AI（zcode|opencode|claude|codex）
@@ -139,8 +139,9 @@ pmset -g sched | head -5       # 确认唤醒事件已预约
 - **`Select a model before sending a message`**：`~/.zcode/v2/provider_config.json` 里没有 `config.defaultModelSelection`——完成登录即可，或手动补上（见第 2 步 JSON）。
 - **`无法定位 CLI ZCode Built-in Provider Config`（crontab 下）**：桌面 app 会把内置配置路径注入子进程，cron 没有。脚本已自动兜底到 app bundle 固定路径；若你的 ZCode 不装在 `/Applications`，用 `ZCODE_CJS` 覆盖路径即可。
 - **Antigravity 报 `not available in your location`**：Google 按请求出口位置拦截，CLI 不读系统 PAC——给 agy 相关域名配路由器/代理出口，或触发前 `export HTTPS_PROXY=...`。鉴权本身没问题时，403 就是纯位置因素。
+- **Antigravity 报 `authentication required`（crontab 下）**：agy 的凭证由 macOS securityd 按会话管控，cron 的独立会话拿不到（GUI 会话可以）。务必用 `ai-toggle on` 的 LaunchAgent 方式调度，不要用 cron。
 - **代理环境**：脚本重试时会自动去掉代理变量再试一次，无需手动处理。
-- **只想周末/工作日跑**：直接改 crontab（`crontab -e`），`ai-toggle` 不会覆盖你改过的时间。
+- **只想周末/工作日跑**：改 plist 里的 `Hour`（`~/Library/LaunchAgents/me.imsoso.ai-refresh.plist`），然后重跑 `~/bin/ai-toggle on` 重载。
 
 ## License
 
@@ -164,10 +165,10 @@ Wake up AI coding subscriptions (GLM Coding Plan etc.) with one **minimal reques
 | Script | Purpose |
 |---|---|
 | `refresh-ai.sh` | Main runner: fires the minimal request at your CLI, with retries / proxy fallback / a concurrency lock |
-| `ai-refresh-toggle.sh` | `on` writes crontab + books 30 days of wakes; `off` cancels wakes only (crontab stays); `status` shows state |
+| `ai-refresh-toggle.sh` | `on` installs a LaunchAgent (daily 8/13/18; missed runs are coalesced and catch up on the next wake/boot) + books 30 days of wakes; `off` cancels wakes only; `status` shows state |
 | `schedule-wakes.sh` | Books pmset wakes at 07:59 / 12:59 / 17:59 for the next N days (idempotent) |
 
-Default schedule: crontab fires at **08:00 / 13:00 / 18:00** daily; pmset wakes the Mac 1 minute earlier. Logs: `~/.ai-refresh.log`.
+Default schedule: launchd fires at **08:00 / 13:00 / 18:00** daily (missed runs catch up automatically); pmset wakes the Mac 1 minute earlier. Logs: `~/.ai-refresh.log`.
 
 ## Quick start (how to set it up)
 
@@ -228,7 +229,7 @@ sudo bash -c 'echo "$USER ALL=(ALL) NOPASSWD: /usr/bin/pmset" > /etc/sudoers.d/p
 ### Step 4: Turn it on
 
 ```bash
-~/bin/ai-toggle on       # writes crontab + books 30 days of wakes
+~/bin/ai-toggle on       # installs the LaunchAgent + books 30 days of wakes
 ~/bin/ai-toggle status   # check state
 ```
 
@@ -245,9 +246,9 @@ Seeing `ZCode ✓` / `OpenCode ✓` means the trigger succeeded — your plan's 
 ## Daily usage
 
 ```bash
-~/bin/ai-toggle on              # on: crontab + 30 days of wakes
-~/bin/ai-toggle off             # off: cancels wakes only (crontab stays; refreshes still run while awake)
-~/bin/ai-toggle status          # state: crontab / wake queue / next wake
+~/bin/ai-toggle on              # on: LaunchAgent + 30 days of wakes
+~/bin/ai-toggle off             # off: cancels wakes only (LaunchAgent stays; refreshes still run while awake)
+~/bin/ai-toggle status          # state: LaunchAgent / wake queue / next wake
 ~/bin/ai-toggle list            # per-AI switches and CLI availability
 
 ~/bin/ai-toggle enable claude   # enable one AI (zcode|opencode|claude|codex)
@@ -284,8 +285,9 @@ Seeing `ZCode ✓` / `OpenCode ✓` means the trigger succeeded — your plan's 
 - **`Select a model before sending a message`** — no `config.defaultModelSelection` in `~/.zcode/v2/provider_config.json`. Complete the login, or add it manually (see the JSON in Step 2).
 - **`Cannot locate ZCode Built-in Provider Config` under crontab** — the desktop app injects the builtin-config path into its child processes; cron doesn't get it. The script already falls back to stable bundle paths automatically; if your ZCode isn't in `/Applications`, override with `ZCODE_CJS`.
 - **Antigravity fails with `not available in your location`** — Google blocks by request egress location, and the CLI doesn't read the system PAC. Route agy-related domains through a proxy exit (router rule or `export HTTPS_PROXY=...` before the run); the 403 is purely location-based when auth itself passes.
+- **Antigravity fails with `authentication required` under crontab** — agy's credentials are gated by macOS securityd per session: cron's separate session can't decrypt them (GUI sessions can). Always schedule via the LaunchAgent from `ai-toggle on`, never raw cron.
 - **Proxy environments** — on retry the script automatically strips proxy variables and tries again; no manual action needed.
-- **Weekends / weekdays only** — edit the crontab directly (`crontab -e`); `ai-toggle` won't overwrite your modified times.
+- **Weekends / weekdays only** — edit `Hour` entries in `~/Library/LaunchAgents/me.imsoso.ai-refresh.plist`, then re-run `~/bin/ai-toggle on` to reload.
 
 ## License
 

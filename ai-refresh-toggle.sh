@@ -67,15 +67,42 @@ ai_list() {
     echo -e "${DIM}toggle: ai-toggle enable|disable <name>${NC}"
 }
 
-ensure_cron() {
-    if ! crontab -l 2>/dev/null | grep -q "refresh-ai.sh"; then
-        (crontab -l 2>/dev/null; echo "0 8,13,18 * * * ${HOME}/bin/refresh-ai.sh >> ${HOME}/.ai-refresh.log 2>&1") | crontab -
-    fi
+ensure_schedule() {
+    PLIST="$HOME/Library/LaunchAgents/me.imsoso.ai-refresh.plist"
+    mkdir -p "$(dirname "$PLIST")"
+    cat > "$PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>me.imsoso.ai-refresh</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>${HOME}/bin/refresh-ai.sh</string>
+        <string>all</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>13</integer><key>Minute</key><integer>0</integer></dict>
+        <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>0</integer></dict>
+    </array>
+    <key>StandardOutPath</key>
+    <string>${HOME}/.ai-refresh.log</string>
+    <key>StandardErrorPath</key>
+    <string>${HOME}/.ai-refresh.log</string>
+</dict>
+</plist>
+EOF
+    launchctl bootout "gui/$(id -u)/me.imsoso.ai-refresh" 2>/dev/null
+    launchctl bootstrap "gui/$(id -u)" "$PLIST"
 }
 
 wake_on() {
-    echo -e "${GREEN}Enabling scheduled wake...${NC}"
-    ensure_cron
+    echo -e "${GREEN}Enabling scheduled refresh + wake...${NC}"
+    ensure_schedule
     "${HOME}/bin/schedule-wakes.sh" 30
     echo "on" > "$STATE_FILE"
 }
@@ -87,7 +114,7 @@ wake_off() {
         sudo -n pmset schedule cancel "$event" &>/dev/null
     done
     echo -e "${RED}All pmset wake events cancelled.${NC}"
-    echo -e "${DIM}Crontab kept — AI refreshes when Mac is awake.${NC}"
+    echo -e "${DIM}LaunchAgent kept — AI refreshes when Mac is awake.${NC}"
     echo "off" > "$STATE_FILE"
 }
 
@@ -96,8 +123,8 @@ show_status() {
     [ -f "$STATE_FILE" ] && state=$(cat "$STATE_FILE")
 
     echo -e "${BOLD}AI Auto-Refresh${NC}"
-    echo -e "  Crontab (always on):"
-    crontab -l 2>/dev/null | grep "refresh-ai" || echo "    (none)"
+    echo -e "  LaunchAgent (always on, catches up missed runs on wake):"
+    launchctl list 2>/dev/null | grep "ai-refresh" || echo "    (not installed — run: ai-toggle on)"
     echo -e "  Scheduled wake: ${state}"
     local count
     count=$(pmset -g sched 2>/dev/null | grep -c 'by .*pmset')
@@ -117,7 +144,7 @@ case "${1:-status}" in
     *)
         echo "Usage: $(basename "$0") [on|off|status|list|enable|disable]"
         echo ""
-        echo "  on            Schedule 30 days of wakes (crontab always stays)"
+        echo "  on            Install LaunchAgent (8/13/18, catches up missed runs) + 30 days of wakes"
         echo "  off           Cancel all wakes only"
         echo "  status        Show current state"
         echo "  list          Show per-AI switches and CLI availability"
