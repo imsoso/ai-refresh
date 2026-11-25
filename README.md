@@ -137,6 +137,8 @@ pmset -g sched | head -5       # 确认唤醒事件已预约
 
 - **`System credential storage is unavailable`**：没做第 2 步，或密钥文件权限不是 600 / 字节数不在 32–4096。
 - **`Select a model before sending a message`**：`~/.zcode/v2/provider_config.json` 里没有 `config.defaultModelSelection`——完成登录即可，或手动补上（见第 2 步 JSON）。
+- **`无法定位 CLI ZCode Built-in Provider Config`（crontab 下）**：桌面 app 会把内置配置路径注入子进程，cron 没有。脚本已自动兜底到 app bundle 固定路径；若你的 ZCode 不装在 `/Applications`，用 `ZCODE_CJS` 覆盖路径即可。
+- **Antigravity 报 `not available in your location`**：Google 按请求出口位置拦截，CLI 不读系统 PAC——给 agy 相关域名配路由器/代理出口，或触发前 `export HTTPS_PROXY=...`。鉴权本身没问题时，403 就是纯位置因素。
 - **代理环境**：脚本重试时会自动去掉代理变量再试一次，无需手动处理。
 - **只想周末/工作日跑**：直接改 crontab（`crontab -e`），`ai-toggle` 不会覆盖你改过的时间。
 
@@ -280,6 +282,8 @@ Seeing `ZCode ✓` / `OpenCode ✓` means the trigger succeeded — your plan's 
 
 - **`System credential storage is unavailable`** — Step 2 not done, or the key file isn't mode 600 / not 32–4096 bytes.
 - **`Select a model before sending a message`** — no `config.defaultModelSelection` in `~/.zcode/v2/provider_config.json`. Complete the login, or add it manually (see the JSON in Step 2).
+- **`Cannot locate ZCode Built-in Provider Config` under crontab** — the desktop app injects the builtin-config path into its child processes; cron doesn't get it. The script already falls back to stable bundle paths automatically; if your ZCode isn't in `/Applications`, override with `ZCODE_CJS`.
+- **Antigravity fails with `not available in your location`** — Google blocks by request egress location, and the CLI doesn't read the system PAC. Route agy-related domains through a proxy exit (router rule or `export HTTPS_PROXY=...` before the run); the 403 is purely location-based when auth itself passes.
 - **Proxy environments** — on retry the script automatically strips proxy variables and tries again; no manual action needed.
 - **Weekends / weekdays only** — edit the crontab directly (`crontab -e`); `ai-toggle` won't overwrite your modified times.
 
